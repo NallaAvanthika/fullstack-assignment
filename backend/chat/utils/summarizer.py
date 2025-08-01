@@ -1,15 +1,15 @@
-from transformers import pipeline
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
 
-# Load once and reuse
-summarizer = pipeline("summarization", model="t5-small", tokenizer="t5-small")
+# Load the model only once
+tokenizer = T5Tokenizer.from_pretrained("t5-small")
+model = T5ForConditionalGeneration.from_pretrained("t5-small")
 
-def generate_summary(text: str) -> str:
+def generate_summary(text, max_length=100):
     if not text.strip():
-        return "No content available for summary."
-    try:
-        # Truncate if too long for small model
-        text = text[:1000]
-        summary = summarizer(text, max_length=60, min_length=20, do_sample=False)
-        return summary[0]['summary_text']
-    except Exception as e:
-        return f"Summary error: {str(e)}"
+        return "No content available."
+    input_text = "summarize: " + text
+    inputs = tokenizer.encode(input_text, return_tensors="pt", max_length=512, truncation=True)
+    summary_ids = model.generate(inputs, max_length=max_length, num_beams=2, early_stopping=True)
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+    return summary
